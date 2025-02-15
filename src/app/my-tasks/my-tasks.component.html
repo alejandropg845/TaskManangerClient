@@ -1,0 +1,83 @@
+
+
+<div class="tasks-container"> <!--tasks Container-->
+
+    @for (userTask of userTasks; track userTask; let i = $index) {
+    <div #userTask{{i}} class="task-container"> <!--Task container-->
+        <div class="header-task-info"> <!--Task info-->
+            <p><span>{{userTask.createdOn | date}}</span> by <span>{{userTask.username | titlecase}}</span></p>
+            <p class="task-type-container">
+                <span *ngIf="userTask.isSharedTask">Shared</span>
+                <span *ngIf="!userTask.isSharedTask">Own</span>
+            </p>
+        </div>
+        <p class="task-title">{{userTask.title}} <span *ngIf="userTask.isSharedTask">{{userTask.groupName}}</span></p>
+        <ul class="ul-container" #ulContainer>
+            @for (taskItem of userTask.taskItems; track taskItem; let ix = $index) {
+            <li (mouseleave)="hideActionButtons(action_buttons)" (mouseenter)="showActionButtons(action_buttons)"> <!---->
+                <p class="content-task-item" #p [ngClass]="{'isCompleted':taskItem.isCompleted}"><span>Task #{{ix + 1}}:</span> {{taskItem.content}}</p>
+                
+                <div #action_buttons class="task-item-action-buttons">
+
+                    <p>{{taskItem.assignToUsername}}</p>
+                    <i *ngIf="taskItem.isRemovable" class="fa fa-regular fa-trash" (click)="deleteTaskItem(taskItem)"></i>
+                    <i *ngIf="taskItem.isCompletable && !taskItem.isCompleted" class="fa-solid fa-check" (click)="onMarkAsCompletedTaskItem(taskItem, userTask.username)"></i>
+                    <i class="fa-regular fa-eye" (click)="openTaskItemContent(p)"></i>
+
+                </div>
+
+            </li>
+            }
+            <!--Mostramos únicamente la interfaz de agregar taskItem si es removable ya que si es removalbe etnonces la tarea es mia-->
+            <div *ngIf="userTask.isRemovable" class="add-taskItem-container">
+                <div class="add-taskItem-content">
+                    
+                    <input #content type="text" placeholder="Task title" 
+                    (keydown.enter)="addTaskItem(userTask.id, content, assignedTo.value, userTask.isSharedTask, ulContainer)">
+                    <select [disabled]="!pagesService.getGroupName || !pagesService.getToken || !userTask.isSharedTask" (click)="getUsers()" #assignedTo>
+                        <option value="">Assign to</option>
+                        @for (user of usersInGroup; track $index) {
+                            <option [value]="user">{{user}}</option>
+                        }
+                    </select>
+                    
+                </div>
+                <i class="fa fa-regular fa-plus" 
+                (click)="addTaskItem(userTask.id, content, assignedTo.value, userTask.isSharedTask, ulContainer)"></i>
+            </div>
+        </ul>
+        <i *ngIf="userTask.isRemovable" class="fa-regular fa-trash-can deleteUserTaskIcon" (click)="deleteUserTask(userTask.id)"></i>
+    </div>
+    }
+</div>
+
+
+<div class="temporary-tasks-container">
+    @for (tempTask of tempTasks; track tempTask; let i = $index) {
+       <div class="temporary-task">
+           <div>
+               <input #title type="text" placeholder="Your title here" id="temp-title">
+           </div>
+           <div>
+               <label>Shared</label>
+               <input [disabled]="!pagesService.getGroupName" type="checkbox" #isShared>
+           </div>
+           <i class="fa fa-solid fa-x" (click)="tempTasks.splice(i, 1)"></i>
+           <i class="fa-solid fa-check" (click)="addUserTask(isShared.checked, title.value, i)"></i>
+       </div>
+    }
+</div>
+
+<div *ngIf="pagesService.userInfo && pagesService.getGroupName" class="connected-people-container">
+    <div *ngIf="isPeopleConnectedOpen" class="connected-people-content">
+        <ul>
+            @for (userJoined of usersInGroup; track $index) {
+                <li>
+                    <p><span>{{userJoined}}</span> is part of this group</p>
+                </li>
+            }
+        </ul>
+    </div>
+    <i [ngClass]="{'fa fa-regular fa-x':isPeopleConnectedOpen, 'fa-solid fa-users':!isPeopleConnectedOpen}" (click)="isPeopleConnectedOpen = !isPeopleConnectedOpen"></i>
+    
+</div>

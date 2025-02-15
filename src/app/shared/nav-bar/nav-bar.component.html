@@ -1,0 +1,48 @@
+<nav class="navbar-container">
+
+    <div class="navbar-general-content">
+        <div class="navbar-content">
+            <div (click)="addTempTask()" class="new-task-container">
+                <i class="fa-solid fa-plus"></i>
+                <p class="new-task-p">Add new task</p>
+            </div>
+            <a *ngIf="pagesService.userInfo && pagesService.getToken && pagesService.getGroupName" (click)="getUserAssignedTasks()">Assigned tasks</a>
+        </div>
+        <div *ngIf="!pagesService.getToken" class="login-container">
+            <div class="login-inputs">
+                <input type="text" placeholder="Username" #username maxlength="14">
+                <div class="security-code-container">
+                    <input [type]="isPasswordType?'password':'text'" placeholder="Security code" maxlength="4" #sc>
+                    <i *ngIf="isPasswordType" class="fa-regular fa-eye-slash" (click)="isPasswordType = false"></i>
+                    <i *ngIf="!isPasswordType" class="fa-regular fa-eye" (click)="isPasswordType = true"></i>
+                </div>
+            </div>
+            <div class="login-type-container">
+                <p *ngIf="isLogin" (click)="changeType()">Login</p>
+                <p *ngIf="!isLogin" (click)="changeType()">Register</p>
+                <button (click)="authenticate(username.value, sc.value)">Access</button>
+            </div>
+        </div>
+        <div>
+            <div class="group-content">
+                <div>
+                    <button *ngIf="pagesService.userInfo && pagesService.getToken && !pagesService.getGroupName" class="change-button" (click)="isJoinGroup = !isJoinGroup">Switch</button>
+                    <div *ngIf="pagesService.userInfo && pagesService.getToken && !pagesService.getGroupName">
+                        <input type="text" placeholder="Join group" *ngIf="isJoinGroup" #joingroup>
+                        <input type="text" placeholder="Create group" *ngIf="!isJoinGroup" #creategroup>
+                    </div>
+                    <div class="action-buttons">
+                        <button *ngIf="pagesService.userInfo && pagesService.getToken && !pagesService.getGroupName" class="done-button" (click)="onGroupSubmit()">Done</button>
+                        <button *ngIf="pagesService.userInfo && pagesService.getToken && pagesService.getGroupName" class="leave-button" (click)="onLeaveGroup()">Leave group</button>
+                        <button *ngIf="pagesService.userInfo && pagesService.getToken && pagesService.getGroupName" class="remove-button" (click)="onDeleteGroup()">Remove group</button>
+                        <button *ngIf="pagesService.userInfo && pagesService.getToken" class="logout-button" (click)="logOut()">Log out</button>
+                    </div>
+                </div>
+        
+            </div>
+        </div>
+    </div>
+    <p *ngIf="pagesService.userInfo && pagesService.getGroupName" class="group-code">Group code: <span>{{pagesService.getGroupName}}</span></p>
+</nav>
+
+<app-assigned-tasks></app-assigned-tasks>

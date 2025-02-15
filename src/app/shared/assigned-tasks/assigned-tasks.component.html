@@ -1,0 +1,16 @@
+<div *ngIf="pagesService.show_assigned_tasks_Signal()" class="assigned-tasks-container">
+    <button (click)="hideAssignedTasks()">Close</button>
+    
+    <div class="pending-tasks-container">
+        <p *ngIf="pendingTasks.length === 0" class="no-assigned-tasks">No assigned tasks for now in this group</p>
+        @for (assignedTask of pendingTasks; track $index) {
+        <div [ngClass]="{'completed-assigned-task':assignedTask.isCompleted}" class="pending-task-container">
+            <p>Content: <span>{{assignedTask.content}}</span></p>
+            <button *ngIf="!assignedTask.isCompleted" (click)="markTaskItemAsCompleted(assignedTask)">Mark as completed <i class="fa fa-solid fa-check"></i></button>
+        </div>
+        }
+    </div>
+
+</div>
+
+<div class="focus-assigned-tasks" *ngIf="pagesService.show_assigned_tasks_Signal()"></div>

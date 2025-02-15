@@ -1,0 +1,14 @@
+<div class="popups-container">
+    @for (response of popup.responses; track $index) {
+        <div class="popup-container" 
+        [ngClass]="{'bg-error': response.type === 'e', 'bg-success': response.type === 's', 'bg-info': response.type === 'i'}">
+            <div class="popup-content">
+                <h1 *ngIf="response.type === 'e'">Error</h1>
+                <h1 *ngIf="response.type === 's'">Success</h1>
+                <h1 *ngIf="response.type === 'i'">Information</h1>
+                <p>{{response.message}}</p>
+            </div>
+        </div>
+    }
+</div>
+
