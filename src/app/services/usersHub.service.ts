@@ -15,6 +15,7 @@ export class UsersHubService {
         .withUrl(`${environment.usersUrl}/commonHub`,{
             accessTokenFactory: () => localStorage.getItem('tmt') || ""
         })
+        .withAutomaticReconnect()
         .build();
 
         try {
@@ -46,8 +47,8 @@ export class UsersHubService {
         this.hubConnection.on("onReceiveUserJoinedGroup", callback);
     }
 
-    onInvokeDeleteGroup(groupName:string){
-        this.hubConnection.invoke("OnRemoveGroup", groupName);
+    onInvokeDeleteGroup(groupName:string, deletedGroupOwnerName:string){
+        this.hubConnection.invoke("OnRemoveGroup", groupName, deletedGroupOwnerName);
     }
 
     onJoinedGroupReceiver(callback:(message:string) => void){
@@ -74,7 +75,7 @@ export class UsersHubService {
         this.hubConnection.invoke("OnRemoveGroup", groupName);
     }
 
-    onReceiveRemovedGroup(callback:(sign:boolean) => void){
+    onReceiveRemovedGroup(callback:(deletedGroupOwnerName:string) => void){
         this.hubConnection.on("onReceiveRemovedGroup", callback);
     }
 

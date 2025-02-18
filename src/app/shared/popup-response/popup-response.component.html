@@ -1,4 +1,4 @@
-<div class="popups-container">
+<div (click)="hidePopup(element)" class="popups-container" #element>
     @for (response of popup.responses; track $index) {
         <div class="popup-container" 
         [ngClass]="{'bg-error': response.type === 'e', 'bg-success': response.type === 's', 'bg-info': response.type === 'i'}">

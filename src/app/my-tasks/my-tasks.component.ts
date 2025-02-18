@@ -1,10 +1,11 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { PagesService } from '../services/pages.service';
 import { Subject, takeUntil } from 'rxjs';
 import { TaskItem, UserTask } from '../interfaces/user-tasks.interface';
 import { PopupService } from '../services/popup.service';
 import { HandleBackendError } from '../interfaces/error-handler';
 import { UsersHubService } from '../services/usersHub.service';
+import { DOCUMENT } from '@angular/common';
 
 @Component({
   selector: 'app-my-tasks',
@@ -12,75 +13,85 @@ import { UsersHubService } from '../services/usersHub.service';
   styles: ``
 })
 export class MyTasksComponent implements OnInit, OnDestroy{
-
+  
   destroy$ = new Subject<void>();
   userTasks:UserTask[] = [];
   tempTasks = this.pagesService.tempTasks;
   isAssignedTasksOpen:boolean = false;
   isPeopleConnectedOpen:boolean = false;
   usersInGroup:string[] = []
+  userTasksLocalStorage:UserTask[] = [];
 
-  onReceiveTestMessageToGroup(message:string){
-    console.log(message);
-  }
+  @ViewChild('assignedTo') assignedto!:ElementRef;
+  @ViewChild('content') content!:ElementRef;
+
 
   getUserTasks(){
 
-    const anySignalToExecute = this.pagesService.needsToGetUserTask_Subject.asObservable();
+      const anySignalToExecute = this.pagesService.needsToGetUserTask_Subject.asObservable();
+  
+      anySignalToExecute.subscribe( _ => {
+        if (this.pagesService.getToken) {
+          /* Obtener la info del user*/ 
+          this.pagesService.getUserInfo()
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+              next: res => {
 
-    anySignalToExecute.subscribe( _ => {
-      if (this.pagesService.getToken) {
-        /* Obtener la info del user*/ 
-        this.pagesService.getUserInfo()
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-            next: res => {
-              this.pagesService.userInfo = res;
-              // Set data to behaviorSubject
-              this.pagesService.getUserTasks();
-  
-              // Si el usuario tiene grupo, entonces agregamos automáticamente su connectionId al grupo
-              if(res.groupName) {
-                this.usersHub.onConnectedUser()
-                .then( _ => {
-                  this.usersHub.onInvokeJoinedGroup(res.groupName!);
-                  this.usersHub.onReceiveUserLeftGroup(this.onReceiveUserLeftGroup.bind(this));
-                  this.usersHub.onReceiveUserJoinedGroup(this.onReceiveUserJoinedGroup.bind(this));
-                  this.usersHub.onReceiveGroupTask(this.onReceiveGroupTask.bind(this));
-                  this.usersHub.onReceiveDeletedGroupTask(this.onReceiveDeletedGroupTask.bind(this));
-                  this.usersHub.onReceiveRemovedGroup(this.onReceiveRemovedGroup.bind(this));
-                  this.usersHub.onReceiveGroupTaskItem(this.onReceiveGroupTaskItem.bind(this));
-                  this.usersHub.onReceiveRemovedTaskItem(this.onReceiveRemovedTaskItem.bind(this));
-                  this.usersHub.onReceiveCompletedTaskItem(this.onReceiveCompletedTaskItem.bind(this));
-  
-                  this.getUsers();
-  
-                })
-                .catch(() => this.popup.showPopup('e', "Error while joining to group server"))
-                
-              }
-  
-              // Subscribe to subject as observable
-              this.pagesService.getUserTasks$
-              .pipe(takeUntil(this.destroy$))
-              .subscribe({
-                next: uts => {
-                  this.userTasks = uts;
-                },
-                error: err => HandleBackendError(err, this.popup)
-              });
-            
+                this.pagesService.groupName = res.groupName; //GroupName en donde cualquier usuario se encuentra unido
+                this.pagesService.username = res.username;
+                //OwnerGroupName donde obtenemos directamente el groupName del microservicio Group del username
+                this.pagesService.isGroupOwner = res.isGroupOwner;
+
+                console.log(res);
+
+                // Set data to behaviorSubject
+                this.pagesService.getUserTasks();
+    
+                // Si el usuario tiene grupo, entonces agregamos automáticamente su connectionId al grupo
+                if(res.groupName) {
+                  this.usersHub.onConnectedUser()
+                  .then( _ => {
+                    this.usersHub.onInvokeJoinedGroup(res.groupName!);
+                    this.usersHub.onReceiveUserLeftGroup(this.onReceiveUserLeftGroup.bind(this));
+                    this.usersHub.onReceiveUserJoinedGroup(this.onReceiveUserJoinedGroup.bind(this));
+                    this.usersHub.onReceiveGroupTask(this.onReceiveGroupTask.bind(this));
+                    this.usersHub.onReceiveDeletedGroupTask(this.onReceiveDeletedGroupTask.bind(this));
+                    this.usersHub.onReceiveRemovedGroup(this.onReceiveRemovedGroup.bind(this));
+                    this.usersHub.onReceiveGroupTaskItem(this.onReceiveGroupTaskItem.bind(this));
+                    this.usersHub.onReceiveRemovedTaskItem(this.onReceiveRemovedTaskItem.bind(this));
+                    this.usersHub.onReceiveCompletedTaskItem(this.onReceiveCompletedTaskItem.bind(this));
+    
+                    this.getUsers();
+    
+                  })
+                  .catch(() => this.popup.showPopup('e', "Error while joining to group server"))
+                  
+                }
+    
+                // Subscribe to subject as observable
+                this.pagesService.getUserTasks$
+                .pipe(takeUntil(this.destroy$))
+                .subscribe({
+                  next: uts => {
+                    this.userTasks = uts;
+                  },
+                  error: err => HandleBackendError(err, this.popup)
+                });
               
-            },
-            error: err => HandleBackendError(err, this.popup)
-        });
-      }
-    });
+                
+              },
+              error: err => HandleBackendError(err, this.popup)
+          });
+        }
+      });
       
   }
 
   reconnectMethodsBindings(){
 
+
+    //Este método se ejecuta cuando recibe la señal desde el login o register response
     this.pagesService.reconnectBindings().subscribe( _ => {
       
         if(this.pagesService.getGroupName) {
@@ -95,6 +106,7 @@ export class MyTasksComponent implements OnInit, OnDestroy{
             this.usersHub.onReceiveGroupTaskItem(this.onReceiveGroupTaskItem.bind(this));
             this.usersHub.onReceiveRemovedTaskItem(this.onReceiveRemovedTaskItem.bind(this));
             this.usersHub.onReceiveCompletedTaskItem(this.onReceiveCompletedTaskItem.bind(this));
+            
             this.getUsers();
     
           })
@@ -108,28 +120,27 @@ export class MyTasksComponent implements OnInit, OnDestroy{
 
   }
 
-  addUserTask(isShared:boolean, title:string, i:number){
+
+  addUserTask(title:string, i:number){
 
     if(!title) {
       this.popup.showPopup('e', "You forgot to add a title to your task");
       return;
     }
-
-    if(!this.pagesService) {
-      this.popup.showPopup('e', 'Group was not found. Created as individual task');
-    }
-
-    this.pagesService.addUserTask(isShared, title)
+  
+    //Si hay groupName, la tarea es Shared (true), sino, es false
+    this.pagesService.addUserTask(this.pagesService.getGroupName ? true : false, title)
     .pipe(takeUntil(this.destroy$))
     .subscribe({
       next: createdTask => {
         this.pagesService.tempTasks.splice(i, 1);
 
-        //Si es sharedtask entonces enviamos al grupo
+        //Si es sharedtask debe tener por obligación un groupName, entonces enviamos al grupo
         if(createdTask.isSharedTask && this.pagesService.getGroupName) {
           this.usersHub.onInvokeSendTaskToEveryone(createdTask);
         } else {
-          //Setteamos en true isRemovable porque es propia task
+          //Setteamos en true isRemovable porque no es shared y no tiene groupName por lo que podemos
+          //darnos el lujo de manipular la referencia al objeto y cambiar su propiedad
           createdTask.isRemovable = true;
           this.userTasks.push(createdTask);
         }
@@ -137,24 +148,23 @@ export class MyTasksComponent implements OnInit, OnDestroy{
       },
       error: err => HandleBackendError(err, this.popup)
     });
+
   }
 
   deleteUserTask(taskId:string){
-
-    this.usersHub.onReceiveDeletedGroupTask(this.onReceiveDeletedGroupTask.bind(this));
 
     this.pagesService.deleteUserTask(taskId)
     .pipe(takeUntil(this.destroy$))
     .subscribe({
       next: _ => {
 
-        /* Eliminar temporary task por index */
+        /* Eliminar temporary task por index para usuario actual*/
         const i = this.userTasks.findIndex(ut => ut.id === taskId);
         this.userTasks.splice(i, 1);
 
-
-        if(this.pagesService.userInfo.groupName){
-          this.usersHub.onInvokeDeletedGroupTask(taskId, this.pagesService.userInfo.groupName);
+        //informar a los demás sobre el cambio y hacer su respectivo cambio
+        if(this.pagesService.groupName){
+          this.usersHub.onInvokeDeletedGroupTask(taskId, this.pagesService.groupName);
         }
         
 
@@ -163,28 +173,32 @@ export class MyTasksComponent implements OnInit, OnDestroy{
     });
   }
 
-  tempUl!:HTMLUListElement | null;
-
-  addTaskItem(taskId:string, content:HTMLInputElement, assignedTo:string, isShared:boolean, ul:HTMLUListElement){
+  addTaskItem(taskId:string, isShared:boolean, ul:HTMLUListElement){
     
+    const content = this.content.nativeElement as HTMLInputElement;
+
     if(!content.value || !taskId) {
       return;
     }
+    
+    const assignedTo = this.assignedto.nativeElement as HTMLSelectElement;
 
-    if(!assignedTo && isShared) {
+    if(!assignedTo.value && isShared) {
       alert("You must provide an user to assign this task")
       return;
     }
 
-    this.pagesService.addTaskItem(taskId, content.value, assignedTo, isShared)
+    this.pagesService.addTaskItem(taskId, content.value, assignedTo.value, isShared)
     .pipe(takeUntil(this.destroy$))
     .subscribe({
       next: addedTaskItem => {
-        if(!this.pagesService.getGroupName || !addedTaskItem.isShared)
+        if(!this.pagesService.getGroupName || !addedTaskItem.isShared){
+
           this.addNoGroupTaskItem(addedTaskItem, content, ul);
-        else {
+          content.value = '';
+
+        } else {
           this.usersHub.onInvokeSendGroupItemTask(addedTaskItem);
-          this.tempUl = ul;
         }
           
       },
@@ -209,6 +223,7 @@ export class MyTasksComponent implements OnInit, OnDestroy{
     
     if(this.pagesService.getToken && this.pagesService.getGroupName){
 
+      //Obtener los usernames que se encuentran en este grupo
       this.pagesService.getUsers();
 
       this.pagesService.usersInGroup_Subject.asObservable()
@@ -294,9 +309,9 @@ export class MyTasksComponent implements OnInit, OnDestroy{
         //El usuario tiene una cuenta
         if(this.pagesService.getToken) {
 
-          //El usuario tiene un grupo y la tarea que completó es shared
+          //El usuario tiene un grupo y la tarea que completó es shared.
           if(this.pagesService.getGroupName && taskItem.isShared){
-            this.usersHub.onInvokeSendCompletedTaskItem(taskItem, taskOwnerName, this.pagesService.getUsername);
+            this.usersHub.onInvokeSendCompletedTaskItem(taskItem, taskOwnerName, this.pagesService.getUsername!);
           } else {
             //El usuario no tiene grupo
             taskItem.isCompleted = true;
@@ -312,13 +327,26 @@ export class MyTasksComponent implements OnInit, OnDestroy{
     });
   }
 
-  constructor(
-    public pagesService:PagesService, private popup:PopupService, private usersHub:UsersHubService){}
+  constructor(public pagesService:PagesService, 
+    private popup:PopupService, 
+    private usersHub:UsersHubService,
+    @Inject(DOCUMENT) private document:Document){
+
+      const storage = this.document.defaultView?.localStorage;
+
+      if(storage) {
+        const userTasks = localStorage.getItem('userTasks');
+        this.userTasksLocalStorage = userTasks ? JSON.parse(userTasks) : [];
+      }
+
+    }
 
   ngOnInit(): void {
+    this.userTasks = this.userTasksLocalStorage;
     this.getUserTasks();
     this.pagesService.needsToGetUserTask_Subject.next(true);
     this.reconnectMethodsBindings();
+
   }
 
   ngOnDestroy(): void {
@@ -344,19 +372,24 @@ export class MyTasksComponent implements OnInit, OnDestroy{
 
   }
 
-  onReceiveRemovedGroup(sign:boolean){
-    if(sign){
-      this.pagesService.userInfo.groupName = null;
-      this.usersHub.stopConnection()
-      .then(() => {
-        this.popup.showPopup('e', "The owner of this group has removed the group");
+  onReceiveRemovedGroup(deletedGroupOwnerName:string){
+   
+    this.pagesService.groupName = null;
+    this.usersHub.stopConnection()
+    .then(() => {
+      console.log("Es el dueño del grupo:", deletedGroupOwnerName === this.pagesService.getUsername)
+      if (this.pagesService.getUsername !== deletedGroupOwnerName) {
+        this.popup.showPopup('i', "The owner of this group has removed the group");
         this.pagesService.getUserTasks();
-      })
-      .catch(() => {
-        this.popup.showPopup('e', "The owner of this group has removed the group");
+      }
+    })
+    .catch(() => {
+      if (this.pagesService.getUsername !== deletedGroupOwnerName) {
+        this.popup.showPopup('i', "The owner of this group has removed the group");
         this.pagesService.getUserTasks();
-      });
-    }
+      }
+    });
+    
   }
 
   onReceiveGroupTaskItem(taskItem:TaskItem){
@@ -376,7 +409,13 @@ export class MyTasksComponent implements OnInit, OnDestroy{
       task.taskItems.push(taskItem);
 
       //Notificar al assignedToUsername que se le ha asignado un taskItem
-      if(taskItem.assignToUsername === this.pagesService.getUsername)
+
+      const userTask = this.userTasks.find(t => t.id === taskItem.taskId)!;
+
+      //Si el usuario al que se le asignó es el mismo al username, se notifica su asignación, 
+      // pero si el owner del userTask al que pertenece el taskItem es el mismo al asignado, quiere decir que el usuario
+      // se auto-asignó un taskItem, por lo que no notificamos.
+      if(taskItem.assignToUsername === this.pagesService.getUsername && taskItem.assignToUsername !== userTask.username)
         this.popup.showPopup('i', 'A new task was assigned to you');
 
 
@@ -414,7 +453,7 @@ export class MyTasksComponent implements OnInit, OnDestroy{
     }
 
     //Procedimientos para enviar notificación de completedTask al taskOwnerName
-    if(taskOwnerName === this.pagesService.getUsername)
+    if(taskOwnerName === this.pagesService.getUsername && this.pagesService.getUsername !== username)
       this.popup.showPopup('i', "The user "+username+ " has completed a task");
 
   }
@@ -442,18 +481,112 @@ export class MyTasksComponent implements OnInit, OnDestroy{
 
   onReceiveUserJoinedGroup(username:string){
 
-    const usernameExists = this.usersInGroup.some(u => u === username);
+      const usernameExists = this.usersInGroup.some(u => u === username);
 
-    if(!usernameExists){
-      
-    this.usersInGroup.push(username);
+      if(!usernameExists){
+        
+      this.usersInGroup.push(username);
 
-    if(username === this.pagesService.getUsername)
-      this.popup.showPopup('i', "Joined to group "+this.pagesService.getGroupName);
-    else 
-      this.popup.showPopup('i', `User ${username} has joined the group`);
+      if(username === this.pagesService.getUsername)
+        this.popup.showPopup('i', "Joined to group "+this.pagesService.getGroupName);
+      else 
+        this.popup.showPopup('i', `User ${username} has joined the group`);
+    }
+
   }
 
+  //LOCALSTORAGE INTERACTION
+
+  addTaskToLocalStorage(title:string, i:number){
+
+    const newTask:UserTask = {
+      createdOn    : new Date(),
+      groupName    : "no group",
+      id           : Math.random().toString(),
+      isRemovable  : true,
+      isSharedTask : false,
+      taskItems    : [],
+      title        : title,
+      username     : ""
+
+    }
+    
+    this.userTasksLocalStorage.push(newTask);
+
+    localStorage.setItem('userTasks', JSON.stringify(this.userTasksLocalStorage));
+    this.pagesService.tempTasks.splice(i, 1);
+
   }
+  
+  addTaskItemLocalStorage(taskId:string){
+
+    const content = this.content.nativeElement as HTMLInputElement;
+
+  
+    if(!content.value) return;
+
+    const taskItem:TaskItem = {
+      assignToUsername : '',
+      content          : content.value,
+      id               : Math.random().toString(),
+      isCompletable    : true,
+      isRemovable      : true,
+      isCompleted      : false,
+      isShared         : false,
+      taskId
+    }
+
+    const task = this.userTasks.find(t => t.id === taskId);
+
+    if(task) {
+
+      task.taskItems.push(taskItem);
+      content.value = '';
+
+      this.saveChangesLocalStorage();
+    }
+
+    content.value = "";
+
+  }
+
+  deleteTaskLocalStorage(taskId:string){
+
+    const taskIndex = this.userTasks.findIndex(t => t.id === taskId);
+
+    if(taskIndex !== -1) this.userTasks.splice(taskIndex, 1);
+
+    this.saveChangesLocalStorage();
+
+  }
+
+  deleteTaskItemLocalStorage(taskId:string, taskItemId:string){
+
+    const task = this.userTasks.find(t => t.id === taskId);
+
+    if(task) {
+
+      const taskItemIndex = task.taskItems.findIndex(ti => ti.id === taskItemId);
+
+      if(taskItemIndex !== -1) task.taskItems.splice(taskItemIndex, 1);
+
+      this.saveChangesLocalStorage();
+
+    }
+
+  }
+
+  setAsCompletedTaskItemLocalStorage(taskItem:TaskItem){
+
+    taskItem.isCompleted = true;
+
+    this.saveChangesLocalStorage();
+
+  }
+
+  saveChangesLocalStorage(){
+    localStorage.setItem('userTasks', JSON.stringify(this.userTasks));
+  }
+
 
 }

@@ -8,6 +8,10 @@ import { PopupService } from '../../services/popup.service';
 })
 export class PopupResponseComponent {
 
+  hidePopup(element:HTMLDivElement){
+    element.style.display = 'none';
+  }
+
   constructor(public popup:PopupService){}
 
 }

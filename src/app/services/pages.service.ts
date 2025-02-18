@@ -22,18 +22,22 @@ export class PagesService {
     userPendingTasks = new BehaviorSubject<TaskItem[]>([]);
     usersInGroup_Subject = new BehaviorSubject<string[]>([]);
 
-    userInfo!: {groupName:string | null, username:string};
+    groupName?:string | null;
+    username!:string | null;
+    isGroupOwner:boolean = false;
+
+
 
     getUserInfo(){
-        return this.http.get<{groupName:string | null, username:string}>(`${environment.usersUrl}/api/users/GetUserInfo`);
+        return this.http.get<{groupName:string | null, username:string, isGroupOwner:boolean}>(`${environment.usersUrl}/api/users/GetUserInfo`);
     }
 
     get getGroupName(){
-        return this.userInfo.groupName;
+        return this.groupName;
     }
 
     get getUsername(){
-        return this.userInfo.username;
+        return this.username;
     }
 
     loginUser(username:string,sc:string){
@@ -69,9 +73,11 @@ export class PagesService {
     }
 
     getUserTasks(){
-        this.http.get<UserTask[]>(`${environment.tasksUrl}/api/tasks/GetUserTasks/${this.userInfo.groupName}`)
+        this.http.get<UserTask[]>(`${environment.tasksUrl}/api/tasks/GetUserTasks/${this.groupName}`)
         .subscribe({
-            next: res => this.getUserTasks_Subject.next(res),
+            next: res => {
+                this.getUserTasks_Subject.next(res);
+            },
             error: err => HandleBackendError(err, this.popupService)
         });
     }
@@ -84,7 +90,7 @@ export class PagesService {
         const body = {
             isShared,
             title,
-            groupName:this.userInfo.groupName
+            groupName:this.groupName
         }
 
         return this.http.post<UserTask>(`${environment.tasksUrl}/api/tasks/AddUserTask`, body);
@@ -100,7 +106,7 @@ export class PagesService {
             taskId, content, 
             isShared,
             assignToUsername: assignToUsername,
-            groupName: this.userInfo.groupName
+            groupName: this.groupName
         }
 
         return this.http.post<TaskItem>(`${environment.taskItemsUrl}/api/taskItems/CreateTaskItem`, body);

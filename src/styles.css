@@ -280,7 +280,7 @@ p, button, ul, li, span, a, h1, h2, h3, h4, h5 {
     cursor: pointer;
 }
 
-@media (min-width:450px) {
+@media (min-width:520px) {
 
     .new-task-p {
         display: block;
@@ -302,7 +302,7 @@ p, button, ul, li, span, a, h1, h2, h3, h4, h5 {
     }
 
     .navbar-general-content {
-        width: 100%;
+        width: 95%;
     }
 
     .group-code {

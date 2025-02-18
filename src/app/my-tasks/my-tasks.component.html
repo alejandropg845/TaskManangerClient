@@ -20,8 +20,19 @@
                 <div #action_buttons class="task-item-action-buttons">
 
                     <p>{{taskItem.assignToUsername}}</p>
-                    <i *ngIf="taskItem.isRemovable" class="fa fa-regular fa-trash" (click)="deleteTaskItem(taskItem)"></i>
-                    <i *ngIf="taskItem.isCompletable && !taskItem.isCompleted" class="fa-solid fa-check" (click)="onMarkAsCompletedTaskItem(taskItem, userTask.username)"></i>
+                    <!--DeleteTaskItem button solo para cuando está logeado--> 
+                    <i *ngIf="pagesService.username && taskItem.isRemovable" class="fa fa-regular fa-trash" (click)="deleteTaskItem(taskItem)"></i>
+
+                    <!--DeleteTaskItem button solo para cuando está localStorage-->
+                    <i *ngIf="!pagesService.username" class="fa fa-regular fa-trash" (click)="deleteTaskItemLocalStorage(taskItem.taskId, taskItem.id)"></i>
+
+                    <!--SetAsCompleted when logged in-->
+                    <i *ngIf="taskItem.isCompletable && !taskItem.isCompleted && pagesService.username" class="fa-solid fa-check" (click)="onMarkAsCompletedTaskItem(taskItem, userTask.username)"></i>
+
+                    <!--SetAsCompleted when not logged in-->
+                    <i *ngIf="!pagesService.username" class="fa-solid fa-check" (click)="setAsCompletedTaskItemLocalStorage(taskItem)"></i>
+
+
                     <i class="fa-regular fa-eye" (click)="openTaskItemContent(p)"></i>
 
                 </div>
@@ -32,9 +43,15 @@
             <div *ngIf="userTask.isRemovable" class="add-taskItem-container">
                 <div class="add-taskItem-content">
                     
-                    <input #content type="text" placeholder="Task title" 
-                    (keydown.enter)="addTaskItem(userTask.id, content, assignedTo.value, userTask.isSharedTask, ulContainer)">
-                    <select [disabled]="!pagesService.getGroupName || !pagesService.getToken || !userTask.isSharedTask" (click)="getUsers()" #assignedTo>
+                    <!--Para cuando hay token-->
+                    <input *ngIf="pagesService.username" #content type="text" placeholder="Task title" 
+                    (keydown.enter)="addTaskItem(userTask.id, userTask.isSharedTask, ulContainer)">
+
+                    <!--Para cuando no hay token-->
+                    <input *ngIf="!pagesService.username" #content type="text" placeholder="Task title" 
+                    (keydown.enter)="addTaskItemLocalStorage(userTask.id)">
+
+                    <select *ngIf="pagesService.username && pagesService.getGroupName" [disabled]="!pagesService.getGroupName || !userTask.isSharedTask" (click)="getUsers()" #assignedTo>
                         <option value="">Assign to</option>
                         @for (user of usersInGroup; track $index) {
                             <option [value]="user">{{user}}</option>
@@ -42,11 +59,20 @@
                     </select>
                     
                 </div>
-                <i class="fa fa-regular fa-plus" 
-                (click)="addTaskItem(userTask.id, content, assignedTo.value, userTask.isSharedTask, ulContainer)"></i>
+               <!--Add task item for user logged in--> 
+                <i *ngIf="pagesService.username" class="fa fa-regular fa-plus" 
+                (click)="addTaskItem(userTask.id, userTask.isSharedTask, ulContainer)"></i>
+
+               <!--Add task item for user logged in--> 
+               <i *ngIf="!pagesService.username" class="fa fa-regular fa-plus" 
+               (click)="addTaskItemLocalStorage(userTask.id)"></i>
             </div>
         </ul>
-        <i *ngIf="userTask.isRemovable" class="fa-regular fa-trash-can deleteUserTaskIcon" (click)="deleteUserTask(userTask.id)"></i>
+        <!--Button delete userTask cuando está loggeado-->
+        <i *ngIf="pagesService.username && userTask.isRemovable" class="fa-regular fa-trash-can deleteUserTaskIcon" (click)="deleteUserTask(userTask.id)"></i>
+
+        <!--Button delete userTask cuando está loggeado-->
+        <i *ngIf="!pagesService.username" class="fa-regular fa-trash-can deleteUserTaskIcon" (click)="deleteTaskLocalStorage(userTask.id)"></i>
     </div>
     }
 </div>
@@ -58,17 +84,14 @@
            <div>
                <input #title type="text" placeholder="Your title here" id="temp-title">
            </div>
-           <div>
-               <label>Shared</label>
-               <input [disabled]="!pagesService.getGroupName" type="checkbox" #isShared>
-           </div>
            <i class="fa fa-solid fa-x" (click)="tempTasks.splice(i, 1)"></i>
-           <i class="fa-solid fa-check" (click)="addUserTask(isShared.checked, title.value, i)"></i>
+           <i *ngIf="pagesService.getToken" class="fa-solid fa-check" (click)="addUserTask(title.value, i)"></i>
+           <i *ngIf="!pagesService.getToken" class="fa-solid fa-check" (click)="addTaskToLocalStorage(title.value, i)"></i>
        </div>
     }
 </div>
 
-<div *ngIf="pagesService.userInfo && pagesService.getGroupName" class="connected-people-container">
+<div *ngIf="pagesService.username && pagesService.getGroupName" class="connected-people-container">
     <div *ngIf="isPeopleConnectedOpen" class="connected-people-content">
         <ul>
             @for (userJoined of usersInGroup; track $index) {

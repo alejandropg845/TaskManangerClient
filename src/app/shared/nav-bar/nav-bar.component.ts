@@ -69,11 +69,16 @@ export class NavBarComponent{
   logOut(){
     this.pagesService.token = null;
     localStorage.removeItem('tmt');
-    this.pagesService.userInfo.groupName = null;
-    this.pagesService.userInfo.username = "";
-    this.pagesService.getUserTasks_Subject.next([]);
+    this.pagesService.groupName = null;
+    this.pagesService.username = null;
+    this.pagesService.isGroupOwner = false;
     this.pagesService.usersInGroup_Subject.next([]);
     this.usersHub.stopConnection();
+
+    const userTasksLS = localStorage.getItem('userTasks');
+
+    this.pagesService.getUserTasks_Subject.next(userTasksLS ? JSON.parse(userTasksLS) : []);
+
   }
 
   onGroupSubmit(){
@@ -94,9 +99,6 @@ export class NavBarComponent{
 
     this.usersHub.onConnectedUser()
     .then(() => {
-
-      this.usersHub.onJoinedGroupReceiver(this.onReceiveMessage.bind(this));
-      this.usersHub.onReceiveRemovedGroup(this.onReceiveRemovedGroup.bind(this));
       let action$;
   
       if(this.isJoinGroup)
@@ -109,7 +111,7 @@ export class NavBarComponent{
         next: res => {
           this.popupService.showPopup('s', res.message);
           this.usersHub.onInvokeJoinedGroup(res.groupName);
-          this.pagesService.userInfo.groupName = res.groupName;
+          this.pagesService.groupName = res.groupName;
           this.pagesService.getUserTasks();
           this.pagesService.reconnectMethodsBindings_Subject.next(true);
         },
@@ -125,7 +127,8 @@ export class NavBarComponent{
     .pipe(takeUntil(this.destroy$))
     .subscribe({
       next: res => {
-        this.pagesService.userInfo = res;
+        this.pagesService.groupName = res.groupName;
+        this.pagesService.username = res.username;
         this.pagesService.getUserTasks();
       },
       error: err => HandleBackendError(err, this.popupService)
@@ -143,7 +146,7 @@ export class NavBarComponent{
         //Salir del group en el hub
         this.usersHub.onLeaveGroup(this.pagesService.getGroupName!)
         .then(() => {
-          this.pagesService.userInfo.groupName = null;
+          this.pagesService.groupName = null;
           //Eliminar conexion ya que no se usa porque no hay group
           this.usersHub.stopConnection()
           .then(() => this.pagesService.getUserTasks())
@@ -164,7 +167,8 @@ export class NavBarComponent{
       .subscribe({
         next: res => { 
           this.popupService.showPopup('s', res.message);
-          this.usersHub.onInvokeDeleteGroup(res.deletedGroup);
+          this.pagesService.isGroupOwner = false;
+          this.usersHub.onInvokeDeleteGroup(res.deletedGroup, res.deletedGroupOwnerName);
         },
         error: err => HandleBackendError(err, this.popupService)
       });
@@ -177,11 +181,7 @@ export class NavBarComponent{
   }
 
   /* HUB METHODS */
-  
-  onReceiveMessage(message:string){
-    console.log(message);
-  }
-
+ 
   onRemoveGroup(){
     if(this.pagesService.getGroupName){
       this.usersHub.onInvokeRemoveGroup(this.pagesService.getGroupName);
@@ -192,7 +192,7 @@ export class NavBarComponent{
 
     if(sign) {
 
-      this.pagesService.userInfo.groupName = null;
+      this.pagesService.groupName = null;
 
       this.pagesService.getUserTasks();
 

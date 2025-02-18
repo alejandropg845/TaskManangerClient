@@ -50,7 +50,7 @@ export class AssignedTasksComponent implements OnInit{
       (
         assignedTask, 
         res.taskOwnerName, 
-        this.pagesService.getUsername
+        this.pagesService.getUsername!
       )
     );
 

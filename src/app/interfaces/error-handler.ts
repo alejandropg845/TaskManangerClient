@@ -3,6 +3,8 @@ import { PopupService } from "../services/popup.service";
 
 export function HandleBackendError(res:HttpErrorResponse, popup:PopupService){
 
+    console.log(res);
+
     if(res.status === 0){
         popup.showPopup('e', "No internet for doing this action");
     } else if (res.error?.message) {
